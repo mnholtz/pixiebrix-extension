@@ -64,6 +64,10 @@ module.exports = {
   node: {
     fs: "empty",
   },
+  output: {
+    filename: "[name].js",
+    chunkFilename: "bundles/[name].bundle.js",
+  },
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "src"),

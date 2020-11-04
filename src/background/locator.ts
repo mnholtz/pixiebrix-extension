@@ -36,7 +36,10 @@ export const locate = liftBackground(
 
 export const refresh = liftBackground(
   "REFRESH_SERVICES",
-  () => locator.refresh(),
+  async () => {
+    console.debug("Refreshing service auths");
+    return await locator.refresh();
+  },
   { asyncResponse: false }
 );
 
