@@ -61,9 +61,6 @@ module.exports = {
     frame: path.resolve(rootDir, "src/frame"),
     options: path.resolve(rootDir, "src/options"),
   },
-  node: {
-    fs: "empty",
-  },
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "src"),
