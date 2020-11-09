@@ -18,8 +18,6 @@
 const path = require("path");
 const { mergeWithCustomize, customizeArray } = require("webpack-merge");
 const common = require("./webpack.base.js");
-const TerserJSPlugin = require("terser-webpack-plugin");
-const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
 const RollbarSourceMapPlugin = require("rollbar-sourcemap-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin = require("webpack-bundle-analyzer")
@@ -61,23 +59,20 @@ module.exports = (rollbarPublicPath) => {
     }),
   })(common, {
     mode: "production",
-    devtool: "nosources-source-map",
+    devtool: "source-map",
     optimization: {
-      minimize: true,
+      // Firefox recommends not minifying the source code. No reason to because the
+      // extension is open-source anyway
+      // https://extensionworkshop.com/documentation/publish/source-code-submission/
+      minimize: false,
+      chunkIds: "named",
+      removeAvailableModules: true,
       usedExports: true,
       splitChunks: {
         cacheGroups: {
           vendors: false,
         },
       },
-      minimizer: [
-        new TerserJSPlugin({
-          terserOptions: {
-            output: { ascii_only: true },
-          },
-        }),
-        new OptimizeCSSAssetsPlugin({}),
-      ],
     },
     plugins: [
       // https://www.npmjs.com/package/webpack-bundle-analyzer
