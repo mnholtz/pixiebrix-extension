@@ -20,7 +20,7 @@ import { BlockArg, Schema } from "@/core";
 import { registerBlock } from "@/blocks/registry";
 import { propertiesToSchema } from "@/validators/generic";
 
-class FormData extends Transformer {
+export class FormData extends Transformer {
   constructor() {
     super(
       "@pixiebrix/forms/data",
