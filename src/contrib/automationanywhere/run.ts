@@ -16,13 +16,17 @@
  */
 
 import { proxyService } from "@/background/requests";
-import { Effect } from "@/types";
+import { Transformer } from "@/types";
 import { mapValues } from "lodash";
 import { registerBlock } from "@/blocks/registry";
 import { BlockArg, BlockOptions, Schema, SchemaProperties } from "@/core";
+import { sleep } from "@/utils";
 
 export const AUTOMATION_ANYWHERE_RUN_BOT_ID =
   "@pixiebrix/automation-anywhere/run-bot";
+
+const MAX_WAIT_MILLIS = 20_000;
+const POLL_MILLIS = 1_000;
 
 export const AUTOMATION_ANYWHERE_PROPERTIES: SchemaProperties = {
   service: {
@@ -39,6 +43,11 @@ export const AUTOMATION_ANYWHERE_PROPERTIES: SchemaProperties = {
     description: "The device to run the bot on",
     format: "\\d+",
   },
+  awaitResult: {
+    type: "boolean",
+    default: false,
+    description: "Wait for the process to complete and output the results.",
+  },
   data: {
     type: "object",
     additionalProperties: true,
@@ -47,10 +56,26 @@ export const AUTOMATION_ANYWHERE_PROPERTIES: SchemaProperties = {
 
 interface DeployResponse {
   automationId: string;
+
+  // deploymentId not coming back?
   deploymentId: string;
 }
 
-export class RunBot extends Effect {
+interface ActivityResponse {
+  page: {
+    offset: number;
+    total: number;
+    totalFilter: number;
+  };
+  // https://docs.automationanywhere.com/bundle/enterprise-v2019/page/enterprise-cloud/topics/control-room/control-room-api/cloud-orches-activity-list.html
+  list: {
+    status: "COMPLETED" | "IN PROGRESS" | "FAILED";
+    message: string;
+    outputVariables: Record<string, unknown>;
+  }[];
+}
+
+export class RunBot extends Transformer {
   constructor() {
     super(
       AUTOMATION_ANYWHERE_RUN_BOT_ID,
@@ -66,10 +91,10 @@ export class RunBot extends Effect {
     properties: AUTOMATION_ANYWHERE_PROPERTIES,
   };
 
-  async effect(
-    { service, fileId, deviceId, data }: BlockArg,
+  async transform(
+    { service, fileId, deviceId, data, awaitResult = false }: BlockArg,
     options: BlockOptions
-  ): Promise<void> {
+  ): Promise<unknown> {
     const { data: responseData } = await proxyService<DeployResponse>(service, {
       url: `/v2/automations/deploy`,
       method: "post",
@@ -86,7 +111,50 @@ export class RunBot extends Effect {
       },
     });
 
-    options.logger.info(`Automation id ${responseData.automationId}`);
+    options.logger.info(`Automation id ${responseData}`, {
+      response: responseData,
+    });
+
+    if (awaitResult) {
+      const start = new Date().getTime();
+      await sleep(POLL_MILLIS);
+      do {
+        const { data: activityData } = await proxyService<ActivityResponse>(
+          service,
+          {
+            url: `/v2/activity/list`,
+            method: "post",
+            data: {
+              filter: {
+                operator: "eq",
+                field: "automationId",
+                value: responseData.automationId,
+              },
+            },
+          }
+        );
+
+        if (activityData.list.length === 0) {
+          throw new Error("Cannot find bot activity");
+        }
+
+        const activity = activityData.list[0];
+        if (activity.status === "COMPLETED") {
+          return activity.outputVariables;
+        } else if (activity.status === "FAILED") {
+          throw new Error(`Automation failed with status: ${activity.message}`);
+        }
+
+        await sleep(POLL_MILLIS);
+      } while (new Date().getTime() - start < MAX_WAIT_MILLIS);
+      throw new Error(
+        `Automation Anywhere job did not finish in ${
+          MAX_WAIT_MILLIS / 1000
+        } seconds`
+      );
+    }
+
+    return {};
   }
 }
 
