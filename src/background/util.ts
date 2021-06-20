@@ -92,6 +92,7 @@ export async function injectContentScript(
     );
 
     // inject in the top-level frame
+    console.log("TST: injectContentScript", file);
     await browser.tabs.executeScript(target.tabId, {
       frameId: target.frameId ?? 0,
       allFrames: false,

@@ -42,6 +42,8 @@ if (typeof chrome === "object" && !chrome.contentScripts) {
   chrome.contentScripts = {
     // The callback is only used by webextension-polyfill
     async register(contentScriptOptions, callback) {
+      console.log("TST: contentScripts.register", contentScriptOptions);
+
       const {
         js = [],
         css = [],
@@ -76,6 +78,11 @@ if (typeof chrome === "object" && !chrome.contentScripts) {
           runAt: "document_start",
           frameId,
         });
+
+        console.log(
+          "TST: contentScripts.register -> execute",
+          contentScriptOptions
+        );
 
         for (const file of css) {
           chrome.tabs.insertCSS(tabId, {
