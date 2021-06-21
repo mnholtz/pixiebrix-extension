@@ -19,23 +19,17 @@ import { isConnectionError } from "@/errors";
 import { showConnectionLost } from "@/contentScript/connection";
 import { reportError } from "@/telemetry/logging";
 
-function addErrorListeners(): void {
-  window.addEventListener("error", function (e) {
-    if (isConnectionError(e)) {
-      showConnectionLost();
-    } else {
-      reportError(e);
-      return false;
-    }
-  });
+function handleError(e: unknown) {
+  if (isConnectionError(e)) {
+    showConnectionLost();
+  } else {
+    reportError(e);
+  }
+}
 
-  window.addEventListener("unhandledrejection", function (e) {
-    if (isConnectionError(e)) {
-      showConnectionLost();
-    } else {
-      reportError(e);
-    }
-  });
+function addErrorListeners(): void {
+  window.addEventListener("error", handleError);
+  window.addEventListener("unhandledrejection", handleError);
 }
 
 export default addErrorListeners;

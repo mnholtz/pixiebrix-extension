@@ -72,15 +72,13 @@ export const getAvailableVersion = liftBackground(
 );
 
 async function setUninstallURL(): Promise<void> {
+  // We still want to show the uninstall page so the user can optionally fill out the uninstall form.
+  const url = new URL(UNINSTALL_URL);
   if (await getDNT()) {
-    // We still want to show the uninstall page so the user can optionally fill out the uninstall form. Also,
-    // Chrome reports an error if no argument is passed in
-    await browser.runtime.setUninstallURL(UNINSTALL_URL);
-  } else {
-    const url = new URL(UNINSTALL_URL);
     url.searchParams.set("uid", await getUID());
-    await browser.runtime.setUninstallURL(url.toString());
   }
+
+  await browser.runtime.setUninstallURL(url.toString());
 }
 
 browser.runtime.onUpdateAvailable.addListener(onUpdateAvailable);
